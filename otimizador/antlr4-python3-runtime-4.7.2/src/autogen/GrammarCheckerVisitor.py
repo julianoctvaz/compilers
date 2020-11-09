@@ -78,10 +78,19 @@ class GrammarCheckerVisitor(ParseTreeVisitor):
     def visitFor_step(self, ctx:GrammarParser.For_stepContext):
         return self.visitChildren(ctx)
 
+    def checkDic(self, name, value):
+        if name in self.ids_defined:
+            return self.ids_defined[name][2]
+        else:
+            new_dic = {}
+            for item in self.ids_defined:
+                new_dic[item] = self.ids_defined[item][2]
+            return eval(value, new_dic)
+
     # Visit a parse tree produced by GrammarParser#variable_definition.
     def visitVariable_definition(self, ctx:GrammarParser.Variable_definitionContext):
         tyype = ctx.tyype().getText()
-
+       # print("VD")
         for i in range(len(ctx.identifier())): # ver quantas atribuicoes tem na linha daquele valor para n variaveis (identifiers)
             name = ctx.identifier(i).getText() #guarda o nome da variavel n 
             token = ctx.identifier(i).IDENTIFIER().getPayload() #guarda a linha e coluna daquela variavel
@@ -95,9 +104,10 @@ class GrammarCheckerVisitor(ParseTreeVisitor):
                     print("WARNING: possible loss of information assigning float expression to int variable '" + name + "' in line " + str(token.line) + " and column " + str(token.column))
             else:
                 cte_value = None
-            self.ids_defined[name] = tyype, -1, cte_value # -1 means not an array, therefore no length here (vide 15 lines below)
-            #print("Printando cte value", cte_value)
-        
+            
+            
+            self.ids_defined[name] = tyype, -1, self.checkDic(name, cte_value) # -1 means not an array, therefore no length here (vide 15 lines below)
+
         for i in range(len(ctx.array())): #talvez aqui eu so mexa aqui
             name = ctx.array(i).identifier().getText()
             token = ctx.array(i).identifier().IDENTIFIER().getPayload()
@@ -116,13 +126,14 @@ class GrammarCheckerVisitor(ParseTreeVisitor):
 
             array_length = self.visit(ctx.array(i))
             self.ids_defined[name] = tyype, array_length, cte_values_array
-            print(cte_values_array)
+            # print(cte_values_array) #CORRIGIDO
             
 
         return
 
     # Visit a parse tree produced by GrammarParser#variable_assignment.
     def visitVariable_assignment(self, ctx:GrammarParser.Variable_assignmentContext):
+        # print('visitVariable_assignment')
         if ctx.identifier() != None:
             name = ctx.identifier().getText()
             token = ctx.identifier().IDENTIFIER().getPayload()
@@ -141,23 +152,36 @@ class GrammarCheckerVisitor(ParseTreeVisitor):
             array_index = self.visit(ctx.array())
             if cte_values_array != None:
                 cte_value = cte_values_array[array_index]
+                # print("CTE_VALUE", cte_value)
             else:
                 cte_value = None
 
         # ATUALIZAR O VALOR DA VARIAVEL OU DO VALOR NAQUELA POSICAO DO ARRAY POR MEIO DE CTE_VALUE
         op = ctx.OP.text
         if op == '++' or op == '--':
-            pass
+            # print('PRINT 1')
+            if op == '++':
+                # print(self.ids_defined)
+                cte_value = cte_value + 1
+            elif op == '--':
+                cte_value = cte_value - 1
+            else:
+                print('Erro - Operadores do For-Step')
         else:
+            # print("PRINT 2")
             expr_type, expr_cte_value = self.visit(ctx.expression())
             if expr_type == Type.VOID:
                 print("ERROR: trying to assign void expression to variable '" + name + "' in line " + str(token.line) + " and column " + str(token.column))
             elif expr_type == Type.FLOAT and tyype == Type.INT:
                 print("WARNING: possible loss of information assigning float expression to int variable '" + name + "' in line " + str(token.line) + " and column " + str(token.column))
-
+        
         if ctx.identifier() != None:
+            # print("PRINT 3")
+            # print(name, cte_value)
             self.ids_defined[name] = tyype, -1, cte_value
+            # print(self.ids_defined)
         else: # array
+            # print("PRINT 4")
             if cte_values_array != None:
                 cte_values_array[array_index] = cte_value
             self.ids_defined[name] = tyype, array_length, cte_values_array
@@ -165,12 +189,12 @@ class GrammarCheckerVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by GrammarParser#expression.
     def visitExpression(self, ctx:GrammarParser.ExpressionContext):
+        #print("EXP")
         tyype = Type.VOID
         cte_value = None # RETORNAR OS VALORES DAS CONTANTES, OU NONE SE NAO FOR CONSTANTE
         if len(ctx.expression()) == 0:
-
             if ctx.integer() != None:
-                tyype = Type.INT
+                tyype = Type.INT    
                 cte_value = int(ctx.integer().getText()) #coloquei
 
             elif ctx.floating() != None:
@@ -192,12 +216,19 @@ class GrammarCheckerVisitor(ParseTreeVisitor):
             elif ctx.array() != None:
                 name = ctx.array().identifier().getText()
                 try:
+                    # print("entrou no try do array do visit expression")
                     tyype, array_length, cte_values_array = self.ids_defined[name]
+                    # print(cte_values_array, "valores pegando aqui dentro do visitexpression")
                 except:
+                    # print("entrou no expection do array")
                     token = ctx.array().identifier().IDENTIFIER().getPayload()
                     print("ERROR: undefined array '" + name + "' in line " + str(token.line) + " and column " + str(token.column))
                 array_index = self.visit(ctx.array())
-
+                # print(array_index, "indice do array") 
+                # print(ctx.array().getText())
+                # print(self.ids_defined['tk'][2][2], "uhuuu")
+                cte_value = str(self.ids_defined['tk'][2][array_index]) + " "
+            
             elif ctx.function_call() != None:
                 tyype, cte_value = self.visit(ctx.function_call())
 
@@ -223,6 +254,7 @@ class GrammarCheckerVisitor(ParseTreeVisitor):
 
 
         elif len(ctx.expression()) == 2: # binary operators
+            # print("PRINT 1")
             text = ctx.OP.text
             token = ctx.OP
             left, left_cte_value = self.visit(ctx.expression(0))
@@ -237,46 +269,55 @@ class GrammarCheckerVisitor(ParseTreeVisitor):
                     tyype = Type.INT
             else:
                 tyype = Type.INT
-            
-            if(left_cte_value and right_cte_value):
-                left_cte_value =  str(left_cte_value)
-                right_cte_value =  str(right_cte_value)
-                if text == '/':
-                    if(tyype == Type.FLOAT):
-                        cte_value = float(eval(left_cte_value)) / float(eval(right_cte_value))
-                        #print(left_cte_value, right_cte_value, "valores")
-                    elif yype == Type.INT:
-                        cte_value = int(eval(left_cte_value)) / int(eval(right_cte_value))
-                    else:
-                        print("ERRO na operacao de divisao")
 
-                       
+            # print("TEXT", text)
+            
+            if(left_cte_value != None and right_cte_value != None):
+                if text == '/':
+                    cte_value = eval(str(left_cte_value)) / eval(str(right_cte_value))
+                    #print(left_cte_value, right_cte_value, "valores")
                 elif text == '*':
-                    if(tyype == Type.FLOAT):
-                        cte_value = float(eval(left_cte_value)) * float(eval(right_cte_value))
-                        #print(left_cte_value, right_cte_value, "valores")
-                    elif tyype == Type.INT:
-                        cte_value = int(eval(left_cte_value)) * int(eval(right_cte_value))
-                    else:
-                        print("ERRO na operacao de multi")
+                    cte_value = eval(str(left_cte_value)) * eval(str(right_cte_value))
+                    #print(left_cte_value, right_cte_value, "valores")
                 elif text == '+':
-                    if(tyype == Type.FLOAT):
-                        cte_value = float(eval(left_cte_value)) + float(eval(right_cte_value))
-                        #print(left_cte_value, right_cte_value, "valores")
-                    elif tyype == Type.INT:
-                        cte_value = int(eval(left_cte_value)) + int(eval(right_cte_value))
-                    else:
-                        print("ERRO na operacao de soma")
+                    cte_value = eval(str(left_cte_value)) + eval(str(right_cte_value))
+                    #print(left_cte_value, right_cte_value, "valores")
                 elif text == '-':
-                    if(tyype == Type.FLOAT):
-                        cte_value = float(eval(left_cte_value)) - float(eval(right_cte_value))
-                        #print(left_cte_value, right_cte_value, "valores")
-                    elif tyype == Type.INT:
-                        cte_value = int(eval(left_cte_value)) - int(eval(right_cte_value))
+                    cte_value = eval(str(left_cte_value)) - eval(str(right_cte_value))
+                    #print(left_cte_value, right_cte_value, "valores")
+                elif text == '<':
+                    if left_cte_value < right_cte_value:
+                        cte_value = 1
                     else:
-                        print("ERRO na operacao de sub")
+                        cte_value = 0
+                elif text == '>':
+                    if left_cte_value > right_cte_value:
+                        cte_value = 1
+                    else:
+                        cte_value = 0
+                elif text == '<=':
+                    if left_cte_value <= right_cte_value:
+                        cte_value = 1
+                    else:
+                        cte_value = 0
+                elif text == '>=':
+                    if left_cte_value >= right_cte_value:
+                        cte_value = 1
+                    else:
+                        cte_value = 0
+                elif text == '==':
+                    if left_cte_value == right_cte_value:
+                        cte_value = 1
+                    else:
+                        cte_value = 0
+                elif text == '!=':
+                    if left_cte_value != right_cte_value:
+                        cte_value = 1
+                    else:
+                        cte_value = 0
                 else:
                     print("ERRO: nao é uma operacao valida")
+        
 
         print(str(tyype) + ": " + str(cte_value))
         #print(self.ids_defined)
@@ -284,10 +325,14 @@ class GrammarCheckerVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by GrammarParser#array.
     def visitArray(self, ctx:GrammarParser.ArrayContext):
+        # print(ctx.getText(), "ctx do visit array")
         tyype, cte_value = self.visit(ctx.expression())
+        name = ctx.identifier().getText()
+        #print(name)
         if tyype != Type.INT:
             token = ctx.identifier().IDENTIFIER().getPayload()
             print("ERROR: array expression must be an integer, but it is " + str(tyype) + " in line " + str(token.line) + " and column " + str(token.column))
+        # print(cte_value, "print final do no visit array")
         return cte_value
 
     # Visit a parse tree produced by GrammarParser#array_literal.
@@ -298,6 +343,7 @@ class GrammarCheckerVisitor(ParseTreeVisitor):
             tyype, cte_value = self.visit(ctx.expression(i))
             types += [tyype]
             cte_values_array += [cte_value]
+        # print(cte_values_array, "valores do array")
         return types, cte_values_array
 
     # Visit a parse tree produced by GrammarParser#function_call.

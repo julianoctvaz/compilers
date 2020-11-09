@@ -36,6 +36,7 @@ int main () {
 	int quantas_trincas = 33, valor1 = 821;
 	float tk[3] = { -1.0, 0.0, 1.0 };
 	valor1 = scalar(quantas_trincas - tk[2], valor1) - tk[0];
+	// valor1 = scalar(quantas_trincas - tk[2], valor1) - tk[0];
 	return 0;
 }
 

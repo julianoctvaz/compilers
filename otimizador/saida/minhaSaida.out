@@ -1,4 +1,3 @@
-python3 antlr4-python3-runtime-4.7.2/src/main.py
 int: 1
 float: None
 int: 2
@@ -68,14 +67,14 @@ float: 0.0
 float: 1.0
 int: 3
 int: 33
-int: 2 
+int: 2
 float: 1.0 
 float: 32.0
 WARNING: possible loss of information converting float expression to int expression in parameter 0 of function 'scalar' in line 38 and column 10
 int: 821
 int: None
 int: 0
-float: -1.0
+float: -1.0 
 float: None
 WARNING: possible loss of information assigning float expression to int variable 'valor1' in line 38 and column 1
 int: 0
