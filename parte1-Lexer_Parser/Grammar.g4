@@ -1,52 +1,130 @@
 /* nome da gramática -- deve ser o mesmo nome do arquivo .g4 e começar com letra maiúscula*/
 grammar Grammar;
+/* 
+
 
 /* parser */
 /* regra raiz */
 file
+	// : (variable_definition ';' | function_definition | directivePreProcessing )* 
 	: (variable_definition ';' | function_definition )* 
 	;
 
+
 variable_definition
-    : (type identifier '=' expression ?)* 
+//   : (type identifier '=' expression ?)* 
+    : (type identifier '=' expression ?)*  (',' identifier '=' expression)*
+	| type array '=' array_literal 
+//	| ';'
 	;
 
 function_definition
 	: type identifier arguments body
 	;
 
+function_call
+//	: identifier '('(expression*) ',' ')'
+	//: identifier '('expression ',' expression ')'
+	: identifier '(' expression* (',' expression)* ')'
+	//: identifier '(' expression* ')'
+	;
+
 variable_assignment
-    : (identifier '/=' expression ?)* 
+    : (identifier '/='  expression ?)* 
+	| (identifier '*='  expression ?)* 
+	| identifier ( '++' | '--')
+	| identifier ( '-=' | '+=' ) expression
 	;
 
 arguments
-    : '(' type identifier ')'
+    : '(' type identifier* (',' type identifier)* ')'
     | '('')'
+	|'(' type identifier ')'
     ;
 
 body
     : '{' statement* '}'
+//	|   statement ';'
     ;
 
 statement
-    : RETURN expression ';'  
-    | variable_definition ';' 
-    | variable_assignment ';' 
+	: RETURN expression ';'  
+	//| expression ';' 
+    | variable_assignment ';'
+//	| variable_assignment ';'
+	| variable_definition ';' 
+	| expression ';'
+	| for_loop
+	| if_statement
     ;
 
 expression
-    : '('expression')'
-    | expression('*'|'/')expression
+    : '(' expression ')'
+	// | expression ',' 
+//	| expression ';' 
+	//| expression '-' 
+	| function_call
+    | expression ('*'|'/') expression
 	| expression ('+'|'-') expression
+	| '-' expression
+//	| '+' expression //mesmo colocado aqui nao sai la
+//	| '-' integer
+	| '-' expression floating
+	| expression ( '<' | '>' | '<=' | '>=' | '==' ) expression
     | identifier
     | integer
     | floating
+	| string
+	| array
+	// | symbol_number
  	;
 
+// symbol_number
+// 	: SYMBOL_NUMBER
+// 	;
 type
 	: 'int'
 	| 'float'
+	| 'string'
 	;
+
+array
+	: identifier '[' expression ']'
+	;
+
+array_literal
+	: '{' expression* (',' expression)* '}'
+	;
+
+for_loop
+	: 'for' '(' for_initializer ';' for_condition ';' for_step ')' body
+	;
+
+for_initializer
+	: variable_definition
+	;
+
+
+for_condition
+	: expression
+	; 
+
+for_step
+	: variable_assignment
+	;
+
+if_statement
+	: 'if' '(' expression ')' statement 
+	| 'if' '(' expression ')' body else_statement
+	;
+
+else_statement
+	: 'else' body
+	| 'else' statement
+	;
+// printf
+// 	: 'printf'
+// 	;
 
 identifier
    : IDENTIFIER 
@@ -59,16 +137,28 @@ integer
 floating
   : FLOAT_NUMBER
   ;
+	
+string
+  : STRING
+  ;
+ 
 
 
 /* implementar mais regras gramaticais, se precisar */
 
 /* lexer */
+STRING :  ["].*?["] ;
 RETURN : 'return' ;
 IDENTIFIER : [_a-zA-Z][a-zA-Z0-9_]* ;
-INTEGER_NUMBER : [+-]?[0-9]+ ;
-FLOAT_NUMBER: [+-]?([0-9]*[.])?[0-9]+; 
+INTEGER_NUMBER : [0-9]+ ;
+FLOAT_NUMBER: ([0-9]*[.])?[0-9]+ ; 
+//SYMBOL_NUMBER: [+-]? ;
 WHITESPACE  : [ \t\r\n]+ -> skip ;
+INCLUDE : '#' .*? '\n' -> skip ;
+COMMENTARY_SINGLE : '//' .*? '\n' -> skip ;
+COMMENTARY_MULTIPLE : '/*' .*? '*/' -> skip ;
+
+
 /* implementar mais expressões regulares, se precisar*/
 
 

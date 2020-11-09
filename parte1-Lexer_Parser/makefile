@@ -1,4 +1,4 @@
-FILENAME = Grammar2
+FILENAME = Grammar
 ROOTRULE = file
 
 SHELL = /bin/bash

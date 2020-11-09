@@ -227,7 +227,7 @@ class GrammarCheckerVisitor(ParseTreeVisitor):
                 # print(array_index, "indice do array") 
                 # print(ctx.array().getText())
                 # print(self.ids_defined['tk'][2][2], "uhuuu")
-                cte_value = str(self.ids_defined['tk'][2][array_index]) + " "
+                cte_value = str(self.ids_defined[name][2][array_index]) + " "
             
             elif ctx.function_call() != None:
                 tyype, cte_value = self.visit(ctx.function_call())
