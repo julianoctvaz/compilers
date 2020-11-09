@@ -224,10 +224,20 @@ class GrammarCheckerVisitor(ParseTreeVisitor):
                     token = ctx.array().identifier().IDENTIFIER().getPayload()
                     print("ERROR: undefined array '" + name + "' in line " + str(token.line) + " and column " + str(token.column))
                 array_index = self.visit(ctx.array())
-                # print(array_index, "indice do array") 
-                # print(ctx.array().getText())
-                # print(self.ids_defined['tk'][2][2], "uhuuu")
-                cte_value = str(self.ids_defined[name][2][array_index]) + " "
+                # print(array_index, array_length)
+                if array_index < array_length:
+                    # print(array_index, "indice do array") 
+                    # print(ctx.array().getText())
+                    # print(self.ids_defined['tk'][2][2], "uhuuu")
+                    if(tyype == Type.FLOAT):
+                        cte_value = float(self.ids_defined[name][2][array_index])
+                    elif(tyype == Type.INT):
+                        cte_value = int(self.ids_defined[name][2][array_index])
+                    else:
+                        print("Erro voce ta acessando o array que nao é inteiro nem float para alguma operacao [aritmetica possivelmente]")
+                else:
+                    token = ctx.array().identifier().IDENTIFIER().getPayload()
+                    print("Erro aqui no index do array, indice fora do comprimento do array " + name + " in line " + str(token.line) +  " and column " + str(token.column))
             
             elif ctx.function_call() != None:
                 tyype, cte_value = self.visit(ctx.function_call())
